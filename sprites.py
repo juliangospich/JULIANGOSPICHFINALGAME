@@ -34,7 +34,8 @@ class Player(Sprite):
         self.standing = False
         self.num_jumps = 0
         self.death = False
-        self.max_jumps = 20
+        self.max_jumps = 50
+        self.score = 0
 
     def jump(self):
         self.rect.x += 2
@@ -44,9 +45,11 @@ class Player(Sprite):
             self.vel.y = -PLAYER_JUMP
             self.canjump = True
             self.num_jumps += 1
+            # Reset vertical acceleration of Player 2
+            #self.game.player2.acc.y = 0
 
     def game_over(self):
-        if not self.canjump and (self.pos.x > WIDTH or self.pos.x < 0):
+        if(self.rect.x > WIDTH or self.rect.x < 0):
             self.death = True
 
     def update(self):
@@ -58,6 +61,8 @@ class Player(Sprite):
             self.acc.x = self.vel.x * PLAYER_FRICTION
         else:
             self.acc.x = 0
+
+       
 
         self.vel += self.acc
         self.vel.x = max(-PLAYER_MAX_SPEED, min(self.vel.x, PLAYER_MAX_SPEED))  # Limit the maximum velocity
@@ -111,15 +116,16 @@ class Player(Sprite):
         self.pos += self.vel + 0.5 * self.acc
         self.rect.midbottom = self.pos
 
-
 class Mob(Sprite):
     def __init__(self, width, height, color):
         Sprite.__init__(self)
         self.width = width
         self.height = height
         self.image = pg.Surface((self.width, self.height))
-        self.color = color
-        self.image.fill(self.color)
+        
+        self.image = pg.image.load('money1.png').convert_alpha()
+        self.image = pg.transform.scale(self.image, (50, 50))
+        self.image.set_colorkey((255, 255, 255))  # Set white color as transparent
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH/2, HEIGHT/2)
         self.pos = vec(WIDTH/2, HEIGHT/2)
@@ -181,6 +187,8 @@ class Basketball(Sprite):
         if self.rect.top < 0 or self.rect.bottom > HEIGHT:
             self.vel.y *= -1
 
+        
+
 
 class BasketballHoop(Sprite):
     def __init__(self, x, y):
@@ -198,6 +206,7 @@ class BasketballHoop(Sprite):
 
         # Set the y-coordinate
         self.rect.y = y
+
 
 
 
@@ -223,16 +232,24 @@ class Player2(Sprite):
         self.num_jumps = 0
         self.death = False
         self.max_jumps = 20
+        self.score = 0
 
     def jump(self):
+        
         self.rect.x += 2
-        hits = pg.sprite.spritecollide(self, self.platforms, False)  # Use self.platforms instead of self.game.platforms
+        hits = pg.sprite.spritecollide(self, self.game.platforms, False)
         self.rect.x -= 2
         if hits and (self.num_jumps < self.max_jumps):
             self.vel.y = -PLAYER_JUMP
             self.canjump = True
             self.num_jumps += 1
+            # Reset vertical acceleration of Player 2
+            #self.game.player2.acc.y = 0
 
+        #self.vel.y = -PLAYER_JUMP
+        #self.canjump = False
+        #self.num_jumps += 1
+        
 
     def game_over(self):
         if not self.canjump and (self.pos.x > WIDTH or self.pos.x < 0):
@@ -241,7 +258,6 @@ class Player2(Sprite):
     def update(self):
         self.acc = vec(0, PLAYER_GRAV)
         self.acc.x = self.vel.x * PLAYER_FRICTION
-        self.acc.y = self.vel.y * PLAYER_FRICTION  # Add friction for vertical movement
         self.input()
         self.vel += self.acc
 
@@ -249,14 +265,22 @@ class Player2(Sprite):
             self.game_over()
 
         # Check if no keys are pressed and set acceleration and velocity to zero
-        if not any(pg.key.get_pressed()):
+        """if not any(pg.key.get_pressed()):
             self.acc.x = 0
             self.vel.x = 0
             self.acc.y = 0  # Set vertical acceleration to zero
-
+        """
         self.pos += self.vel + 0.5 * self.acc
         self.rect.midbottom = self.pos
-   
+
+        # Update canjump flag based on collision with platforms
+        hits = pg.sprite.spritecollide(self, self.game.platforms, False)
+        if hits:
+            self.canjump = True
+            self.num_jumps = 0
+        else:
+            self.canjump = False
+
     def input(self):
         keys = pg.key.get_pressed()
         if keys[pg.K_LEFT]:
@@ -266,8 +290,8 @@ class Player2(Sprite):
         else:
             self.acc.x = 0
         if keys[pg.K_UP]:
-            if self.canjump:
-                self.jump()
+           # if self.canjump:
+            self.jump()
         if keys[pg.K_ESCAPE]:
             pg.quit()
             sys.exit()
