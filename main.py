@@ -87,6 +87,9 @@ class Game:
                 self.player2.acc.x = PLAYER_ACC
             elif event.key == pg.K_UP and self.player2.standing:
                 self.player2.jump()
+            elif event.key == pg.K_ESCAPE:
+                pg.quit()
+                sys.exit()
         # Player 2 movement
         if event.type == pg.KEYUP:
             if event.key == pg.K_LEFT and self.player2.acc.x < 0:
