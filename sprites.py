@@ -20,10 +20,10 @@ pg.mixer.music.play(-1)
 class Player(Sprite):
     def __init__(self, game):
         Sprite.__init__(self)
-        # these are the properties
         self.game = game
         self.image = pg.image.load('MJ.jpg').convert_alpha()
         self.image = pg.transform.scale(self.image, (50, 50))
+        self.image.set_colorkey((255, 255, 255))  # Set white color as transparent
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH/2, HEIGHT/2)
         self.pos = vec(WIDTH/2, HEIGHT/2)
@@ -44,45 +44,43 @@ class Player(Sprite):
             self.vel.y = -PLAYER_JUMP
             self.canjump = True
             self.num_jumps += 1
-        elif self.num_jumps >= self.max_jumps:
-            self.game_over()
 
     def game_over(self):
-        self.game.screen.fill((0, 0, 0))
-        font = pg.font.Font(None, 48)
-        text = font.render("You have won it! You're the champion!!!", True, (255, 255, 255))
-        text_rect = text.get_rect()
-        text_rect.center = (WIDTH/2, HEIGHT/2)
-        self.game.screen.blit(text, text_rect)
-        pg.display.flip()
-        pg.time.wait(3000)
-        pg.quit()
-        sys.exit()
+        if not self.canjump and (self.pos.x > WIDTH or self.pos.x < 0):
+            self.death = True
 
     def update(self):
         self.acc = vec(0, PLAYER_GRAV)
-        self.acc.x = self.vel.x * PLAYER_FRICTION
         self.input()
+
+        # Adjust the acceleration based on the player's current velocity
+        if abs(self.vel.x) < PLAYER_MAX_SPEED:
+            self.acc.x = self.vel.x * PLAYER_FRICTION
+        else:
+            self.acc.x = 0
+
         self.vel += self.acc
+        self.vel.x = max(-PLAYER_MAX_SPEED, min(self.vel.x, PLAYER_MAX_SPEED))  # Limit the maximum velocity
         self.pos += self.vel + 0.5 * self.acc
         self.rect.midbottom = self.pos
 
-        if self.rect.top > HEIGHT:
+        if self.rect.top <= 0:
             self.game_over()
 
     def input(self):
         keys = pg.key.get_pressed()
-        if keys[pg.K_LEFT] or keys[pg.K_a]:
+        if keys[pg.K_a]:
             self.acc.x = -PLAYER_ACC
-        if keys[pg.K_RIGHT] or keys[pg.K_d]:
+        elif keys[pg.K_d]:
             self.acc.x = PLAYER_ACC
-        if keys[pg.K_UP] or keys[pg.K_w]:
+        else:
+            self.acc.x = 0
+        if keys[pg.K_w]:
             if self.canjump:
                 self.jump()
         if keys[pg.K_ESCAPE]:
             pg.quit()
             sys.exit()
-
     def inbounds(self):
         if self.rect.x > WIDTH - 50:
             self.pos.x = WIDTH - 25
@@ -96,6 +94,7 @@ class Player(Sprite):
             print("I am off the bottom of the screen")
         if self.rect.y < 0:
             print("I am off the top of the screen...")
+
 
     def mob_collide(self):
         hits = pg.sprite.spritecollide(self, self.game.enemies, True)
@@ -167,6 +166,7 @@ class Basketball(Sprite):
         self.height = height
         self.image = pg.image.load('basketball.jpg').convert_alpha()
         self.image = pg.transform.scale(self.image, (50, 50))
+        self.image.set_colorkey((255, 255, 255))  # Set white color as transparent
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH/2, HEIGHT/2)
         self.vel = vec(0, 0)
@@ -191,12 +191,16 @@ class BasketballHoop(Sprite):
 
         # Calculate the x-coordinate based on the screen width and given x position
         if x < WIDTH / 2:
-            self.rect.x = x - self.rect.width  # Adjust position on the left side
+            self.rect.x = x - 150  # Adjust position on the left side, 150 pixels to the left
         else:
-            self.rect.x = x  # Adjust position on the right side
+            self.rect.x = x + 50  # Adjust position on the right side, 50 pixels to the right
+            self.image = pg.transform.flip(self.image, True, False)  # Flip the image horizontally
 
         # Set the y-coordinate
         self.rect.y = y
+
+
+
 
 
 
@@ -207,33 +211,67 @@ class Player2(Sprite):
         self.game = game
         self.image = pg.image.load('lebron.jpg').convert_alpha()
         self.image = pg.transform.scale(self.image, (50, 50))
+        self.image.set_colorkey((255, 255, 255))  # Set white color as transparent
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH/2, HEIGHT/2)
         self.pos = vec(WIDTH/2, HEIGHT/2)
-        self.vel = vec(3, 7)
+        self.vel = vec(0, 0)
         self.acc = vec(0, 0)
         self.cofric = 0.1
         self.canjump = False
         self.standing = False
         self.num_jumps = 0
         self.death = False
-        self.max_jumps = 12
+        self.max_jumps = 20
 
-def input(self):
-    keys = pg.key.get_pressed()
-    if self.standing:  # Only allow movement if Player 2 is standing on the ground
-        if keys[pg.K_LEFT] or keys[pg.K_a]:
+    def jump(self):
+        self.rect.x += 2
+        hits = pg.sprite.spritecollide(self, self.platforms, False)  # Use self.platforms instead of self.game.platforms
+        self.rect.x -= 2
+        if hits and (self.num_jumps < self.max_jumps):
+            self.vel.y = -PLAYER_JUMP
+            self.canjump = True
+            self.num_jumps += 1
+
+
+    def game_over(self):
+        if not self.canjump and (self.pos.x > WIDTH or self.pos.x < 0):
+            self.death = True
+
+    def update(self):
+        self.acc = vec(0, PLAYER_GRAV)
+        self.acc.x = self.vel.x * PLAYER_FRICTION
+        self.acc.y = self.vel.y * PLAYER_FRICTION  # Add friction for vertical movement
+        self.input()
+        self.vel += self.acc
+
+        if self.rect.top <= 0:
+            self.game_over()
+
+        # Check if no keys are pressed and set acceleration and velocity to zero
+        if not any(pg.key.get_pressed()):
+            self.acc.x = 0
+            self.vel.x = 0
+            self.acc.y = 0  # Set vertical acceleration to zero
+
+        self.pos += self.vel + 0.5 * self.acc
+        self.rect.midbottom = self.pos
+   
+    def input(self):
+        keys = pg.key.get_pressed()
+        if keys[pg.K_LEFT]:
             self.acc.x = -PLAYER_ACC
-        elif keys[pg.K_RIGHT] or keys[pg.K_d]:
+        elif keys[pg.K_RIGHT]:
             self.acc.x = PLAYER_ACC
         else:
             self.acc.x = 0
-        if keys[pg.K_UP] or keys[pg.K_w]:
+        if keys[pg.K_UP]:
             if self.canjump:
                 self.jump()
-    if keys[pg.K_ESCAPE]:
-        pg.quit()
-        sys.exit()
-
-
-   
+        if keys[pg.K_ESCAPE]:
+            pg.quit()
+            sys.exit()
+        if keys[pg.K_SPACE]:
+            # Add additional movement logic here for player two sprite
+            # For example, you can modify self.vel.y or self.vel.x to move the sprite vertically or horizontally
+            pass
